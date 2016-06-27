@@ -231,10 +231,4 @@ void optimos()
   outputValue_yaw=91;
   outputValue_flight=45;
   outputValue_accesorio=42;
-  throttle.write(outputValue_throttle);
-  picht.write(outputValue_picht);
-  roll.write(outputValue_roll);
-  yaw.write(outputValue_yaw);
-  flight.write(outputValue_flight);
-  accesorio.write(outputValue_accesorio);
 }

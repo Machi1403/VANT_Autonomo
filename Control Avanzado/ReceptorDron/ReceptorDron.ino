@@ -53,7 +53,7 @@ void setup()
   Serial.begin(9600);
   Serial.println("conectado");
   Serial1.begin(9600);
-  Serial1.setTimeout(200); 
+  Serial1.setTimeout(400); 
   /*****************************ENVIO DE PARAMETROS INICIALES*****************************/
   throttle.write(outputValue_throttle);
   picht.write(outputValue_picht);
@@ -64,7 +64,56 @@ void setup()
   /*****************************ENVIO DE PARAMETROS INICIALES sha*****************************/
 }
 
-
+void armar()
+{
+  for(int i = 42; i<= 138; i++)
+  {
+    accesorio.write(i);
+    delay(5);
+  } 
+  outputValue_accesorio=139;
+  accesorio.write(outputValue_accesorio);
+  Serial.println("ARMADO");
+  delay(2000);
+  for(int j=0;j<4;j++)
+  {
+    verificar_throttle();
+    delay(500);
+  }
+}
+void desarmar()
+{
+  for(int i = 138; i>= 45; i--)
+  {
+    accesorio.write(i);
+  } 
+  optimos();
+  accesorio.write(outputValue_accesorio);
+  throttle.write(outputValue_throttle);
+  Serial.println("DESARMADO");
+}
+void verificar_throttle()
+{
+  for(int i=outputValue_throttle;i<=outputValue_throttle+30;i++)
+  {
+    throttle.write(i);
+    delay(5);
+  }
+  for(int j=outputValue_throttle+30;j>=outputValue_throttle;j--)
+  {
+    throttle.write(j);
+    delay(5);
+  }
+}
+void optimos()
+{
+  outputValue_throttle=43;
+  outputValue_picht=89;
+  outputValue_roll=90;
+  outputValue_yaw=91;
+  outputValue_flight=45;
+  outputValue_accesorio=42;
+}
 char validar(String mensaje)
 {
   if(mensaje==val_a)
@@ -118,6 +167,7 @@ char validar(String mensaje)
 void loop() 
 {
   lectura=0;
+  int i=43;
   if(Serial1.available()>0)
   {
     st=Serial1.readString();
@@ -127,21 +177,36 @@ void loop()
   {
   	int salida;
     case 'e':
-      outputValue_throttle = map(5, 0, 100, outputValue_throttle, 140);
-      throttle.write(outputValue_throttle);
+      for(i=outputValue_throttle;i<=(outputValue_throttle+10);i++)
+      {
+        throttle.write(i);
+        delay(10);
+      }
+      outputValue_throttle=i;
       break;
     case 'd':
-      outputValue_throttle = map(5, 0, 100,43,outputValue_throttle);
-      throttle.write(outputValue_throttle);
+      for(i=outputValue_throttle;i>=(outputValue_throttle-10);i--)
+      {
+        throttle.write(i);
+        delay(10);
+      }
+      outputValue_throttle=i;
       break;
 
-    case 's':
-      salida = map(10, 0,100,outputValue_yaw,139);
-      yaw.write(salida);
-      break;
     case 'f':
-      salida = map(10, 0, 100,43,outputValue_yaw);
-      yaw.write(salida);
+      for(int i=outputValue_yaw;i<=115;i++)
+      {
+        yaw.write(i);
+        delay(50);
+      }
+      break;
+    case 's':
+      //salida = int(map(10, 0, 100,43,outputValue_yaw));
+      for(int i=outputValue_yaw;i>=67;i--)
+      {
+        yaw.write(i);
+        delay(50);
+      }
       break;
 
     case 'i':
@@ -182,53 +247,3 @@ void loop()
       break;
   }   
 } 
-void armar()
-{
-  for(int i = 42; i<= 138; i++)
-  {
-    accesorio.write(i);
-    delay(5);
-  } 
-  outputValue_accesorio=139;
-  accesorio.write(outputValue_accesorio);
-  Serial.println("ARMADO");
-  delay(500);
-  for(int j=0;j<4;j++)
-  {
-    verificar_throttle();
-    delay(500);
-  }
-}
-void desarmar()
-{
-  for(int i = 138; i>= 43; i--)
-  {
-    accesorio.write(i);
-  } 
-  optimos();
-  accesorio.write(outputValue_accesorio);
-  throttle.write(outputValue_throttle);
-  Serial.println("DESARMADO");
-}
-void verificar_throttle()
-{
-  for(int i=outputValue_throttle;i<=outputValue_throttle+30;i++)
-  {
-    throttle.write(i);
-    delay(5);
-  }
-  for(int j=outputValue_throttle+30;j>=outputValue_throttle;j--)
-  {
-    throttle.write(j);
-    delay(5);
-  }
-}
-void optimos()
-{
-  outputValue_throttle=43;
-  outputValue_picht=89;
-  outputValue_roll=90;
-  outputValue_yaw=91;
-  outputValue_flight=45;
-  outputValue_accesorio=42;
-}

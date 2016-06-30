@@ -194,37 +194,49 @@ void loop()
       break;
 
     case 'f':
-      for(int i=outputValue_yaw;i<=115;i++)
+      for(int j=outputValue_yaw;j<=115;j++)
       {
-        yaw.write(i);
+        yaw.write(j);
         delay(50);
       }
       break;
     case 's':
       //salida = int(map(10, 0, 100,43,outputValue_yaw));
-      for(int i=outputValue_yaw;i>=67;i--)
+      for(int j=outputValue_yaw;j>=67;j--)
       {
-        yaw.write(i);
+        yaw.write(j);
         delay(50);
       }
       break;
 
     case 'i':
-      salida = map(10, 0, 100,outputValue_picht,160);
-      picht.write(salida);
+      for(int j=outputValue_picht;j<=114;j++)
+      {
+        picht.write(j);
+        delay(50);
+      }    
       break;
     case 'k':
-      salida = map(10, 0, 100,42,outputValue_picht);
-      picht.write(salida);
+      for(int j=outputValue_picht;j>=64;j--)
+      {
+        picht.write(j);
+        delay(50);
+      }
       break;
 
     case 'j':
-      salida = map(10, 0, 100,outputValue_roll,160);
-      roll.write(salida);
+      for(int j=outputValue_roll;j>=65;j--)
+      {
+        roll.write(j);
+        delay(50);
+      } 
       break;
     case 'l':
-      salida = map(5, 0, 100,43,outputValue_roll);
-      roll.write(salida);
+      for(int j=outputValue_roll;j<=115;j++)
+      {
+        roll.write(j);
+        delay(50);
+      }  
       break;
 
 

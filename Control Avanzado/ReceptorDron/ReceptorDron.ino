@@ -1,4 +1,6 @@
 //ReceptorDron.ino
+#include <TinyGPS.h>
+TinyGPS gps;
 #include <sha1.h>
 uint8_t *hash;
 #include <Servo.h>
@@ -8,7 +10,9 @@ Servo roll;
 Servo yaw;
 Servo flight;
 Servo accesorio;
-Servo throttle; 
+Servo throttle;
+
+bool newData; 
 /*****************************INICIALIZACIÓN DE VALORES ÓPTIMOS*****************************/   
 int aux=0;
 int lectura=0;
@@ -38,6 +42,7 @@ String val_k="13fbd79c3d390e5d6585a21e11ff5ec1970cff0c";
 String val_j="5c2dd944dde9e08881bef0894fe7b22a5c9c4b06";
 String val_l="07c342be6e560e7f43842e2e21b774e61d85f047";
 
+String val_g="54fd1711209fb1c0781092374132c66e79e2241b";
 
 /*****************************CONFIGURACIÓN INICIAL*****************************/
 void setup() 
@@ -53,7 +58,8 @@ void setup()
   Serial.begin(9600);
   Serial.println("conectado");
   Serial1.begin(9600);
-  Serial1.setTimeout(200); 
+  Serial1.setTimeout(200);
+  Serial2.begin(9600); 
   /*****************************ENVIO DE PARAMETROS INICIALES*****************************/
   throttle.write(outputValue_throttle);
   picht.write(outputValue_picht);
@@ -110,6 +116,11 @@ char validar(String mensaje)
   if(mensaje==val_l)
   {
     return ('l');
+  }
+
+  if(mensaje==val_g)
+  {
+    return ('g');
   }
 
 }
@@ -170,6 +181,37 @@ void loop()
     case 'q':
       Serial.println("DESARMANDO...");
       desarmar();
+      break;
+
+    case'g':
+      newData = false;
+      unsigned long chars;
+      unsigned short sentences, failed;
+
+      // For one second we parse GPS data and report some key values
+      for (unsigned long start = millis(); millis() - start < 1000;)
+      {
+        while (Serial2.available())
+        {
+          char c = Serial2.read();
+          // Serial.write(c); // uncomment this line if you want to see the GPS data flowing
+          if (gps.encode(c)) // Did a new valid sentence come in?
+            newData = true;
+        }
+      }
+      if (newData)
+      {
+        float flat, flon, falt;
+        unsigned long age;
+        gps.f_get_position(&flat, &flon, &falt, &age);
+        Serial.print("LAT= ");
+        Serial.print(flat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flat, 6);
+        Serial.print(" LON= ");
+        Serial.print(flon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flon, 6);
+        Serial.print("ALT= ");
+        Serial.println(falt);
+      }
+
       break;
 
     default:

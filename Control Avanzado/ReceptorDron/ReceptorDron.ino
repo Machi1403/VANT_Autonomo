@@ -70,6 +70,42 @@ void setup()
   /*****************************ENVIO DE PARAMETROS INICIALES sha*****************************/
 }
 
+int posGPS()
+{
+  newData = false;
+  unsigned long chars;
+  unsigned short sentences, failed;
+
+  // For one second we parse GPS data and report some key values
+  for (unsigned long start = millis(); millis() - start < 1000;)
+  {
+    while (Serial2.available())
+    {
+      char c = Serial2.read();
+      // Serial.write(c); // uncomment this line if you want to see the GPS data flowing
+      if (gps.encode(c)) // Did a new valid sentence come in?
+        newData = true;
+    }
+  }
+  if (newData)
+  {
+    float flat, flon, falt;
+    unsigned long age;
+    gps.f_get_position(&flat, &flon, &falt, &age);
+    Serial.print("LAT= ");
+    Serial.print(flat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flat, 6);
+    Serial.print(" LON= ");
+    Serial.print(flon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flon, 6);
+    Serial.print("ALT= ");
+    Serial.println(falt);
+    return 1;
+  }
+  gps.stats(&chars, &sentences, &failed);
+  if (chars == 0)
+  {
+    return 0;
+  }
+}
 
 char validar(String mensaje)
 {
@@ -183,37 +219,6 @@ void loop()
       desarmar();
       break;
 
-    case'g':
-      newData = false;
-      unsigned long chars;
-      unsigned short sentences, failed;
-
-      // For one second we parse GPS data and report some key values
-      for (unsigned long start = millis(); millis() - start < 1000;)
-      {
-        while (Serial2.available())
-        {
-          char c = Serial2.read();
-          // Serial.write(c); // uncomment this line if you want to see the GPS data flowing
-          if (gps.encode(c)) // Did a new valid sentence come in?
-            newData = true;
-        }
-      }
-      if (newData)
-      {
-        float flat, flon, falt;
-        unsigned long age;
-        gps.f_get_position(&flat, &flon, &falt, &age);
-        Serial.print("LAT= ");
-        Serial.print(flat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flat, 6);
-        Serial.print(" LON= ");
-        Serial.print(flon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flon, 6);
-        Serial.print("ALT= ");
-        Serial.println(falt);
-      }
-
-      break;
-
     default:
       throttle.write(outputValue_throttle);
       picht.write(outputValue_picht);
@@ -226,6 +231,10 @@ void loop()
 } 
 void armar()
 {
+  while(posGPS()==0)
+  {
+    Serial.println("No hay datos GPS");
+  }
   for(int i = 42; i<= 138; i++)
   {
     accesorio.write(i);

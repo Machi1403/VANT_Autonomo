@@ -5,6 +5,14 @@ TinyGPS gps;
 uint8_t *hash;
 #include <Servo.h>
 /*****************************DECLARAR VARIABLES A USAR*****************************/
+#define inputRoll A0
+#define inputPitch A1
+#define inputThrottle A2
+#define inputYaw A3
+#define inputControlMode A4
+#define inputAcc0 A5
+
+
 Servo picht;
 Servo roll;
 Servo yaw;
@@ -20,9 +28,10 @@ int outputValue_throttle=43;
 int outputValue_picht=89;
 int outputValue_roll=90;
 int outputValue_yaw=91;
-int outputValue_flight=45;
+int outputValue_flight=980;
 int outputValue_accesorio=42;
 
+int timeH;
 
 char men[40];
 String st="";
@@ -52,6 +61,13 @@ void setup()
   yaw.attach(11);
   flight.attach(12);
   accesorio.attach(13);
+
+  pinMode(inputRoll, INPUT);
+  pinMode(inputPitch, INPUT);
+  pinMode(inputThrottle, INPUT);
+  pinMode(inputYaw, INPUT);
+  pinMode(inputControlMode, INPUT);
+  pinMode(inputAcc0, INPUT);
   /******************COMUNICACIÓN SERIAL**********************/
   Serial.begin(9600);
   Serial.println("conectado");
@@ -63,7 +79,7 @@ void setup()
   picht.write(outputValue_picht);
   roll.write(outputValue_roll);
   yaw.write(outputValue_yaw);
-  flight.write(outputValue_flight);
+  flight.writeMicroseconds(outputValue_flight);
   accesorio.write(outputValue_accesorio);
   /*****************************ENVIO DE PARAMETROS INICIALES sha*****************************/
 }
@@ -156,7 +172,7 @@ void optimos()
   outputValue_picht=89;
   outputValue_roll=90;
   outputValue_yaw=91;
-  outputValue_flight=45;
+  outputValue_flight=980;
   outputValue_accesorio=42;
 }
 char validar(String mensaje)
@@ -211,96 +227,108 @@ char validar(String mensaje)
 /*****************************CICLO REPETITIVO*****************************/
 void loop() 
 {
-  lectura=0;
-  int i=43;
-  if(Serial1.available()>0)
+  if(pulseIn(inputControlMode, HIGH)>940 && pulseIn(inputControlMode, HIGH)<1500 && pulseIn(inputThrottle,HIGH)>1500 && pulseIn(inputAcc0, HIGH)> 1600)
   {
-    st=Serial1.readString();
-    lectura=validar(st);
-  }  
-  switch (lectura)
+    roll.writeMicroseconds(pulseIn(inputRoll,HIGH));
+    picht.writeMicroseconds(pulseIn(inputPitch,HIGH));
+    throttle.writeMicroseconds(pulseIn(inputThrottle,HIGH));
+    yaw.writeMicroseconds(pulseIn(inputYaw,HIGH));
+    flight.writeMicroseconds(outputValue_flight);
+    accesorio.writeMicroseconds(pulseIn(inputAcc0,HIGH));
+  }
+  else
   {
-  	int salida;
-    case 'e':
-      for(i=outputValue_throttle;i<=(outputValue_throttle+10);i++)
-      {
-        throttle.write(i);
-        delay(10);
-      }
-      outputValue_throttle=i;
-      break;
-    case 'd':
-      for(i=outputValue_throttle;i>=(outputValue_throttle-10);i--)
-      {
-        throttle.write(i);
-        delay(10);
-      }
-      outputValue_throttle=i;
-      break;
+    lectura=0;
+    int i=43;
+    if(Serial1.available()>0)
+    {
+      st=Serial1.readString();
+      lectura=validar(st);
+    }  
+    switch (lectura)
+    {
+      int salida;
+      case 'e':
+        for(i=outputValue_throttle;i<=(outputValue_throttle+10);i++)
+        {
+          throttle.write(i);
+          delay(10);
+        }
+        outputValue_throttle=i;
+        break;
+      case 'd':
+        for(i=outputValue_throttle;i>=(outputValue_throttle-10);i--)
+        {
+          throttle.write(i);
+          delay(10);
+        }
+        outputValue_throttle=i;
+        break;
 
-    case 'f':
-      for(int j=outputValue_yaw;j<=115;j++)
-      {
-        yaw.write(j);
-        delay(50);
-      }
-      break;
-    case 's':
-      //salida = int(map(10, 0, 100,43,outputValue_yaw));
-      for(int j=outputValue_yaw;j>=67;j--)
-      {
-        yaw.write(j);
-        delay(50);
-      }
-      break;
+      case 'f':
+        for(int j=outputValue_yaw;j<=115;j++)
+        {
+          yaw.write(j);
+          delay(50);
+        }
+        break;
+      case 's':
+        //salida = int(map(10, 0, 100,43,outputValue_yaw));
+        for(int j=outputValue_yaw;j>=67;j--)
+        {
+          yaw.write(j);
+          delay(50);
+        }
+        break;
 
-    case 'i':
-      for(int j=outputValue_picht;j<=114;j++)
-      {
-        picht.write(j);
-        delay(50);
-      }    
-      break;
-    case 'k':
-      for(int j=outputValue_picht;j>=64;j--)
-      {
-        picht.write(j);
-        delay(50);
-      }
-      break;
+      case 'i':
+        for(int j=outputValue_picht;j<=114;j++)
+        {
+          picht.write(j);
+          delay(50);
+        }    
+        break;
+      case 'k':
+        for(int j=outputValue_picht;j>=64;j--)
+        {
+          picht.write(j);
+          delay(50);
+        }
+        break;
 
-    case 'j':
-      for(int j=outputValue_roll;j>=65;j--)
-      {
-        roll.write(j);
-        delay(50);
-      } 
-      break;
-    case 'l':
-      for(int j=outputValue_roll;j<=115;j++)
-      {
-        roll.write(j);
-        delay(50);
-      }  
-      break;
+      case 'j':
+        for(int j=outputValue_roll;j>=65;j--)
+        {
+          roll.write(j);
+          delay(50);
+        } 
+        break;
+      case 'l':
+        for(int j=outputValue_roll;j<=115;j++)
+        {
+          roll.write(j);
+          delay(50);
+        }  
+        break;
 
 
-    case 'a':
-      Serial.println("ARMANDO...");
-      armar();
-      break;
-    case 'q':
-      Serial.println("DESARMANDO...");
-      desarmar();
-      break;
+      case 'a':
+        Serial.println("ARMANDO...");
+        armar();
+        break;
+      case 'q':
+        Serial.println("DESARMANDO...");
+        desarmar();
+        break;
 
-    default:
-      throttle.write(outputValue_throttle);
-      picht.write(outputValue_picht);
-      roll.write(outputValue_roll);
-      yaw.write(outputValue_yaw);
-      flight.write(outputValue_flight);
-      accesorio.write(outputValue_accesorio);
-      break;
+      default:
+        throttle.write(outputValue_throttle);
+        picht.write(outputValue_picht);
+        roll.write(outputValue_roll);
+        yaw.write(outputValue_yaw);
+        flight.writeMicroseconds(outputValue_flight);
+        accesorio.write(outputValue_accesorio);
+        break;
+    }
   }   
 } 

@@ -1,9 +1,12 @@
+#include <TimerOne.h>
 //ReceptorDron.ino
 #include <TinyGPS.h>
 TinyGPS gps;
 #include <sha1.h>
 uint8_t *hash;
 #include <Servo.h>
+
+
 /*****************************DECLARAR VARIABLES A USAR*****************************/
 #define inputRoll A0
 #define inputPitch A1
@@ -57,6 +60,8 @@ String val_l="07c342be6e560e7f43842e2e21b774e61d85f047";
 /*****************************CONFIGURACIÓN INICIAL*****************************/
 void setup() 
 { 
+  Timer1.initialize(60000000);//1 minúto
+  Timer1.attachInterrupt(envioDatosGPS);
 /********************DEFINICIÓN DE PINES**********************/
   roll.attach(8);
   picht.attach(9);
@@ -88,7 +93,10 @@ void setup()
   controlArduino=false;
   /*****************************ENVIO DE PARAMETROS INICIALES sha*****************************/
 }
-
+void envioDatosGPS()
+{
+  posGPS(flat, flon, falt);
+}
 int posGPS(float flat, float flon, float falt)
 {
   newData = false;

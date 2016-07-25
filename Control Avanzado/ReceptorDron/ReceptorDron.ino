@@ -20,7 +20,10 @@ Servo flight;
 Servo accesorio;
 Servo throttle; 
 
+float flat, flon, falt;
+
 bool newData; 
+bool controlArduino;
 /*****************************INICIALIZACIÓN DE VALORES ÓPTIMOS*****************************/   
 int aux=0;
 int lectura=0;
@@ -81,10 +84,12 @@ void setup()
   yaw.write(outputValue_yaw);
   flight.writeMicroseconds(outputValue_flight);
   accesorio.write(outputValue_accesorio);
+
+  controlArduino=false;
   /*****************************ENVIO DE PARAMETROS INICIALES sha*****************************/
 }
 
-int posGPS()
+int posGPS(float flat, float flon, float falt)
 {
   newData = false;
   unsigned long chars;
@@ -103,7 +108,7 @@ int posGPS()
   }
   if (newData)
   {
-    float flat, flon, falt;
+    //float flat, flon, falt;
     unsigned long age;
     gps.f_get_position(&flat, &flon, &falt, &age);
     Serial.print("LAT= ");
@@ -123,7 +128,7 @@ int posGPS()
 
 void armar()
 {
-  while(posGPS()==0)
+  while(posGPS(flat, flon, falt)==0)
   {
     Serial.println("No hay datos GPS");
   }
@@ -227,8 +232,17 @@ char validar(String mensaje)
 /*****************************CICLO REPETITIVO*****************************/
 void loop() 
 {
-  if(pulseIn(inputControlMode, HIGH)>940 && pulseIn(inputControlMode, HIGH)<1500 && pulseIn(inputThrottle,HIGH)>1500 && pulseIn(inputAcc0, HIGH)> 1600)
+  if(controlArduino==true && pulseIn(inputControlMode, HIGH)>940 && pulseIn(inputControlMode, HIGH)<1500 && pulseIn(inputThrottle,HIGH)>1500 && pulseIn(inputAcc0, HIGH)> 1600)
   {
+    controlArduino=false;
+  }
+  if(pulseIn(inputControlMode, HIGH)<1600)
+  {
+    controlArduino=true;
+  }
+  if(controlArduino)
+  {
+
     roll.writeMicroseconds(pulseIn(inputRoll,HIGH));
     picht.writeMicroseconds(pulseIn(inputPitch,HIGH));
     throttle.writeMicroseconds(pulseIn(inputThrottle,HIGH));

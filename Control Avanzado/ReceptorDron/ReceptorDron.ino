@@ -4,6 +4,10 @@ TinyGPS gps;
 #include <sha1.h>
 uint8_t *hash;
 #include <Servo.h>
+
+#include <Wire.h> 
+#include <HMC5883L.h> 
+HMC5883L compass; 
 /*****************************DECLARAR VARIABLES A USAR*****************************/
 #define inputRoll A0
 #define inputPitch A1
@@ -22,8 +26,14 @@ Servo throttle;
 
 float flat, flon, falt;
 
+float latitudInicial,longitudInicial;
+
 bool newData; 
 bool controlArduino;
+
+float arrayLon[10];
+float arrayLat[10];
+int cantidadCoordenadas;
 /*****************************INICIALIZACIÓN DE VALORES ÓPTIMOS*****************************/   
 int aux=0;
 int lectura=0;
@@ -85,8 +95,14 @@ void setup()
   flight.writeMicroseconds(outputValue_flight);
   accesorio.write(outputValue_accesorio);
 
-  controlArduino=false;
+  controlArduino=true;
   /*****************************ENVIO DE PARAMETROS INICIALES sha*****************************/
+
+
+  Wire.begin(); 
+  compass = HMC5883L(); 
+  compass.SetScale(1.3); 
+  compass.SetMeasurementMode(Measurement_Continuous); 
 }
 
 int posGPS(float flat, float flon, float falt)
@@ -111,18 +127,18 @@ int posGPS(float flat, float flon, float falt)
     //float flat, flon, falt;
     unsigned long age;
     gps.f_get_position(&flat, &flon, &falt, &age);
-    Serial.print("LAT= ");
+    Serial.print("Coordenadas;");
     Serial.print(flat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flat, 6);
-    Serial.print(" LON= ");
+    Serial.print(";");
     Serial.print(flon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flon, 6);
-    Serial.print("ALT= ");
+    Serial.print(";");
     Serial.println(falt);
     return 1;
   }
   gps.stats(&chars, &sentences, &failed);
   if (chars == 0)
   {
-    return 0;
+    Serial.println("Error;GPS1");
   }
 }
 
@@ -130,8 +146,9 @@ void armar()
 {
   while(posGPS(flat, flon, falt)==0)
   {
-    Serial.println("No hay datos GPS");
+    Serial.println("Error;GPS2");
   }
+  posicionInicial();
   for(int i = 42; i<= 138; i++)
   {
     accesorio.write(i);
@@ -139,16 +156,18 @@ void armar()
   } 
   outputValue_accesorio=139;
   accesorio.write(outputValue_accesorio);
-  Serial.println("ARMADO");
+  Serial.println("E;Ensamblando");
   delay(500);
   for(int j=0;j<4;j++)
   {
     verificar_throttle();
     delay(500);
   }
+  Serial.println("E;Armado");
 }
 void desarmar()
 {
+  Serial.println("E;Desensamblando");
   for(int i = 138; i>= 45; i--)
   {
     accesorio.write(i);
@@ -156,7 +175,7 @@ void desarmar()
   optimos();
   accesorio.write(outputValue_accesorio);
   throttle.write(outputValue_throttle);
-  Serial.println("DESARMADO");
+  Serial.println("E;Desarmado");
 }
 void verificar_throttle()
 {
@@ -226,29 +245,189 @@ char validar(String mensaje)
   {
     return ('l');
   }
+  else
+  {
+    return('c');
+  }
 
 }
-
-/*****************************CICLO REPETITIVO*****************************/
-void loop() 
+bool alertaDistacia(float lat1, float lon1)
 {
+  posGPS(flat,flon,falt);
+  //Se calcula la distancia entre el punto de partida y el actual
+  float distancia=gps.distance_between(lat1,lon1,flat,flon);
+  //Si la distancia es mayor a 700 mts el VANT se acerca al punto de partida
+  if(distancia>700)
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+bool metodoDeControl()
+{
+  //True para control
+  //False para arduino
   if(controlArduino==true && pulseIn(inputControlMode, HIGH)>940 && pulseIn(inputControlMode, HIGH)<1500 && pulseIn(inputThrottle,HIGH)>1500 && pulseIn(inputAcc0, HIGH)> 1600)
   {
     controlArduino=false;
+    Serial.println("M;RadioControl");
+    return true;
   }
-  if(pulseIn(inputControlMode, HIGH)<1600)
+  if(pulseIn(inputControlMode, HIGH)<1600 && controlArduino==false)
   {
     controlArduino=true;
+    Serial.println("M;Arduino");
+    return false;
   }
-  if(controlArduino)
+}
+void vueloAutonomo(float lat1,float lon1,float lat2,float lon2)
+{
+  dirigir(lat2,lon2);
+  volarHacia(lat2,lon2);
+}
+void acercarHacia(float lat2, float lon2)
+{
+  dirigir(lat2,lon2);
+  posGPS(flat,flon,falt);
+  /*Una vez alcanzado el ángulo deseado se procede a 
+  avanzar hacia el punto de origen hasta que la distancia
+  actual con el punto de origen sea de 600 metros*/
+  while(gps.distance_between(flat,flon,lat2,lon2)<=600)
   {
-
+    throttle.writeMicroseconds(1550);
+    picht.writeMicroseconds(1600);
+    
+  }
+}
+void volarHacia(float lat2, float lon2)
+{ 
+  posGPS(flat,flon,falt);
+  float auxlat=falt,auxlon=flon;
+  while(gps.distance_between(flat,flon,lat2,lon2)>5.0 && !alertaDistacia(latitudInicial,longitudInicial))
+  {
+    throttle.writeMicroseconds(1550);
+    picht.writeMicroseconds(1600);
+    posGPS(flat,flon,falt);
+    if(gps.distance_between(flat,flon,auxlat,auxlon)>10)
+    {
+      auxlat=flat;
+      auxlon=flon;
+      dirigir(lat2,lon2);
+    }
+  }
+  if(alertaDistacia(latitudInicial,longitudInicial))
+  {
+    acercarHacia(latitudInicial,longitudInicial);
+  }
+}
+void dirigir(float lat2, float lon2)
+{
+  /*En este proceso primero se debe fijar el ángulo al que 
+  se debe apuntar respecto al norte para dirigirse al punto
+  de origen.*/
+  posGPS(flat,flon,falt);
+  float angulo=gps.course_to (flat, flon, lat2, lon2);
+  /*Ahora se verifica a que ángulo se apunta actualmente*/
+  float anguloActual=brujula();
+  /*Se apunta al ángulo del punto de origen por el lado más
+  conveniente (giro más corto).
+  yaw.writeMicroseconds(X) gira el VANT, sea hacia la izquierda
+  o hacia la derecha según convenga*/
+  if(angulo-anguloActual>0)
+  {
+    while(brujula()!=angulo+5.0||brujula()!=angulo-5.0)
+    {
+      yaw.writeMicroseconds(1280);
+      throttle.writeMicroseconds(1550);
+    }  
+  }
+  else
+  {
+    while(brujula()!=angulo+5.0||brujula()!=angulo-5.0)
+    {
+      yaw.writeMicroseconds(1620);
+      throttle.writeMicroseconds(1550);
+    } 
+  }
+}
+float brujula()
+{
+  MagnetometerRaw raw = compass.ReadRawAxis(); 
+  MagnetometerScaled scaled = compass.ReadScaledAxis(); 
+  float xHeading = atan2(scaled.YAxis, scaled.XAxis); 
+  float yHeading = atan2(scaled.ZAxis, scaled.XAxis); 
+  float zHeading = atan2(scaled.ZAxis, scaled.YAxis); 
+  if(xHeading < 0) xHeading += 2*PI; 
+  if(xHeading > 2*PI) xHeading-= 2*PI; 
+  if(yHeading < 0) yHeading += 2*PI; 
+  if(yHeading > 2*PI) yHeading-= 2*PI; 
+  if(zHeading < 0) zHeading += 2*PI; 
+  if(zHeading > 2*PI) zHeading-= 2*PI; 
+  float xDegrees = xHeading * 180/M_PI; 
+  float yDegrees = yHeading * 180/M_PI; 
+  float zDegrees = zHeading * 180/M_PI; 
+  Serial.print("Brujula;");
+  Serial.println(xDegrees);
+  return xDegrees;
+  /*Serial.print(xDegrees); 
+  Serial.print(","); 
+  Serial.print(yDegrees); 
+  Serial.print(","); 
+  Serial.print(zDegrees); 
+  Serial.println(";");*/
+}
+void posicionInicial()
+{
+  posGPS(flat,flon,falt);
+  longitudInicial=flon;
+  latitudInicial=flat;
+}
+int separarCoordenadas()
+{
+  cantidadCoordenadas=0;
+  int cantidadCaracteres;
+  cantidadCaracteres=st.length();
+  String auxCoordenadas=" ";
+  for(int i=0;i>=cantidadCaracteres;i=i+20)
+  {
+    cantidadCoordenadas++;
+    auxCoordenadas=st.substring(i,i+10);
+    arrayLat[i/10]=auxCoordenadas.toFloat();
+    auxCoordenadas=st.substring(i+10,i+20);
+    arrayLon[i/10]=auxCoordenadas.toFloat();
+  }
+  return cantidadCoordenadas;
+}
+void coordenadas()
+{
+  int CantCoordenadas=separarCoordenadas();
+  //posicionInicial();
+  for(int i=0;i<=CantCoordenadas;i++)
+  {
+    posGPS(flat,flon,falt);
+    vueloAutonomo(flat,flon,arrayLat[i],arrayLon[i]);
+  }
+}
+/*****************************CICLO REPETITIVO*****************************/
+void loop() 
+{
+  posGPS(flat, flon,falt);
+  if(metodoDeControl())
+  {
     roll.writeMicroseconds(pulseIn(inputRoll,HIGH));
     picht.writeMicroseconds(pulseIn(inputPitch,HIGH));
     throttle.writeMicroseconds(pulseIn(inputThrottle,HIGH));
     yaw.writeMicroseconds(pulseIn(inputYaw,HIGH));
     flight.writeMicroseconds(outputValue_flight);
     accesorio.writeMicroseconds(pulseIn(inputAcc0,HIGH));
+
+    if(pulseIn(inputAcc0, HIGH)<1600)
+    {
+        Serial.println("E;Desarmado");
+    }
   }
   else
   {
@@ -335,6 +514,11 @@ void loop()
         desarmar();
         break;
 
+      case 'c':
+        //float arrayLat[10];
+        //float arrayLong[10];
+        coordenadas();
+        break;
       default:
         throttle.write(outputValue_throttle);
         picht.write(outputValue_picht);
@@ -344,5 +528,21 @@ void loop()
         accesorio.write(outputValue_accesorio);
         break;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   }   
-}
+} 
